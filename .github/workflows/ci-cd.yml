@@ -73,7 +73,7 @@ jobs:
       # Step 5: Run all tests with coverage report
       - name: 🧪 Run tests with coverage
         run: |
-          pytest --cov=app --cov-report=term-missing -v
+          pytest tests/ --cov=app --cov-report=term-missing -v
           echo "✅ All tests passed!"
 
   # ════════════════════════════════════════════════════════

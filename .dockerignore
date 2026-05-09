@@ -12,6 +12,7 @@ tests/
 .coverage
 htmlcov/
 chroma_db/
+scratch/
 *.md
 .vscode/
 .idea/
