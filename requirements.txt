@@ -1,0 +1,30 @@
+# ============================================================
+# DocuMind Dependencies
+# ============================================================
+# This file lists ALL Python packages our app needs.
+# Docker and CI/CD use this to install the exact same packages
+# everywhere — your laptop, the CI server, and production.
+# ============================================================
+
+# --- Web Framework ---
+flask==3.1.1
+
+# --- RAG Pipeline ---
+langchain>=0.3.0
+langchain-google-genai>=2.0.0        # Google Gemini LLM
+langchain-huggingface>=0.1.0         # Local embeddings (sentence-transformers)
+langchain-chroma>=0.2.0              # ChromaDB vector store integration
+langchain-text-splitters>=0.3.0      # Smart text chunking
+
+# --- Vector Database ---
+chromadb>=0.5.0                      # Store & search document embeddings
+
+# --- Embeddings Model ---
+sentence-transformers>=3.0.0         # Runs locally, FREE, no API key needed
+
+# --- Utilities ---
+python-dotenv>=1.0.0                 # Load .env files for config
+
+# --- Testing (only used in development & CI) ---
+pytest>=8.0.0
+pytest-cov>=5.0.0

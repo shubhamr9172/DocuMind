@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuMind — AI Document Q&A</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ─── CSS VARIABLES (Design Tokens) ─── */
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a2e;
+            --bg-input: #16162a;
+            --accent: #7c3aed;
+            --accent-hover: #8b5cf6;
+            --accent-glow: rgba(124, 58, 237, 0.3);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #2a2a40;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --radius: 12px;
+            --font: 'Inter', -apple-system, sans-serif;
+        }
+
+        /* ─── RESET & BASE ─── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ─── LAYOUT ─── */
+        .app {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            height: 100vh;
+        }
+
+        /* ─── SIDEBAR ─── */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #e2e8f0, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-left: 46px;
+        }
+
+        /* ─── DOCUMENT UPLOAD ─── */
+        .upload-section {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .upload-section h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent);
+            background: rgba(124, 58, 237, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--accent);
+            background: rgba(124, 58, 237, 0.1);
+        }
+
+        .upload-icon { font-size: 24px; margin-bottom: 4px; }
+        .upload-text { font-size: 13px; color: var(--text-secondary); }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            padding: 12px;
+            font-family: var(--font);
+            font-size: 13px;
+            resize: vertical;
+            margin-top: 10px;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .input-row input {
+            flex: 1;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            font-family: var(--font);
+            font-size: 13px;
+        }
+
+        .input-row input:focus { outline: none; border-color: var(--accent); }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-family: var(--font);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--error);
+            border: 1px solid var(--error);
+        }
+
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.1); }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ─── DOCUMENT LIST ─── */
+        .doc-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+        }
+
+        .doc-list h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .doc-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .doc-item .icon { font-size: 16px; }
+        .doc-item .name { flex: 1; color: var(--text-secondary); }
+
+        .sidebar-footer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        /* ─── CHAT AREA ─── */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .chat-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .chat-header .badge {
+            font-size: 11px;
+            padding: 4px 10px;
+            background: rgba(124, 58, 237, 0.15);
+            color: var(--accent-hover);
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* ─── MESSAGES ─── */
+        .message {
+            max-width: 75%;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .message.user {
+            align-self: flex-end;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        .message-bubble {
+            padding: 14px 18px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .message.user .message-bubble {
+            background: var(--accent);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-bubble {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            padding: 0 4px;
+        }
+
+        .message.user .message-meta { text-align: right; }
+
+        .sources-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(124, 58, 237, 0.1);
+            color: var(--accent-hover);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            margin-top: 8px;
+            margin-right: 4px;
+        }
+
+        /* ─── WELCOME STATE ─── */
+        .welcome {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .welcome-icon {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px var(--accent-glow);
+        }
+
+        .welcome h2 {
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        .welcome p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            max-width: 400px;
+            line-height: 1.6;
+        }
+
+        .welcome-steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 28px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .welcome-step {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: left;
+        }
+
+        .welcome-step .step-num {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent-hover);
+            margin-bottom: 6px;
+        }
+
+        .welcome-step h4 {
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .welcome-step p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* ─── TYPING INDICATOR ─── */
+        .typing {
+            display: flex;
+            gap: 4px;
+            padding: 14px 18px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            align-self: flex-start;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .typing span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: bounce 1.4s infinite;
+        }
+
+        .typing span:nth-child(2) { animation-delay: 0.2s; }
+        .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+        /* ─── CHAT INPUT ─── */
+        .chat-input-area {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            padding: 14px 16px;
+            font-family: var(--font);
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius);
+            background: var(--accent);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 0 20px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* ─── TOAST NOTIFICATIONS ─── */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            animation: slideDown 0.3s ease, fadeOut 0.3s ease 2.7s;
+            animation-fill-mode: forwards;
+        }
+
+        .toast.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .toast.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* ─── ANIMATIONS ─── */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-6px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ─── SCROLLBAR ─── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            .app { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- ─── SIDEBAR ─── -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">🧠</div>
+                    <h1>DocuMind</h1>
+                </div>
+                <div class="logo-subtitle">RAG-Powered Document Q&A</div>
+            </div>
+
+            <div class="upload-section">
+                <h3>📄 Upload Document</h3>
+                <textarea id="docText" placeholder="Paste your document text here..."></textarea>
+                <div class="input-row">
+                    <input type="text" id="docName" placeholder="filename.txt" value="document.txt">
+                    <button class="btn btn-primary" id="ingestBtn" onclick="ingestDocument()">Ingest</button>
+                </div>
+            </div>
+
+            <div class="doc-list">
+                <h3>📚 Knowledge Base</h3>
+                <div id="documentList">
+                    <p style="font-size: 13px; color: var(--text-muted); padding: 8px;">No documents yet. Upload one above!</p>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="status-bar">
+                        <div class="status-dot" id="statusDot"></div>
+                        <span id="statusText">Checking...</span>
+                    </div>
+                    <button class="btn btn-danger" onclick="clearDocuments()" style="font-size: 11px; padding: 4px 10px;">Clear All</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ─── CHAT AREA ─── -->
+        <main class="chat-container">
+            <div class="chat-header">
+                <h2>💬 Chat</h2>
+                <span class="badge">RAG Enabled</span>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome" id="welcomeScreen">
+                    <div class="welcome-icon">🧠</div>
+                    <h2>Welcome to DocuMind</h2>
+                    <p>Upload a document, then ask questions about it. The AI will answer using only information from your documents.</p>
+                    <div class="welcome-steps">
+                        <div class="welcome-step">
+                            <div class="step-num">Step 1</div>
+                            <h4>Upload</h4>
+                            <p>Paste text in the sidebar</p>
+                        </div>
+                        <div class="welcome-step">
+                            <div class="step-num">Step 2</div>
+                            <h4>Ingest</h4>
+                            <p>Click to process & embed</p>
+                        </div>
+                        <div class="welcome-step">
+                            <div class="step-num">Step 3</div>
+                            <h4>Ask</h4>
+                            <p>Get AI-powered answers</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-area">
+                <div class="chat-input-wrapper">
+                    <input type="text" class="chat-input" id="chatInput"
+                           placeholder="Ask a question about your documents..."
+                           onkeydown="if(event.key==='Enter') askQuestion()">
+                    <button class="send-btn" id="sendBtn" onclick="askQuestion()">➤</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        // ─── CHECK API STATUS ───────────────────────────
+        async function checkStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/`);
+                const data = await res.json();
+                document.getElementById('statusDot').style.background =
+                    data.rag_enabled ? 'var(--success)' : 'var(--warning)';
+                document.getElementById('statusText').textContent =
+                    data.rag_enabled ? 'RAG Active' : 'RAG Disabled';
+                refreshDocuments();
+            } catch {
+                document.getElementById('statusDot').style.background = 'var(--error)';
+                document.getElementById('statusText').textContent = 'Offline';
+            }
+        }
+
+        // ─── INGEST DOCUMENT ────────────────────────────
+        async function ingestDocument() {
+            const text = document.getElementById('docText').value.trim();
+            const filename = document.getElementById('docName').value.trim() || 'untitled.txt';
+
+            if (!text) { showToast('Please paste some text first', 'error'); return; }
+
+            const btn = document.getElementById('ingestBtn');
+            btn.disabled = true;
+            btn.textContent = '...';
+
+            try {
+                const res = await fetch(`${API_BASE}/documents/ingest`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, filename })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    showToast(`✅ Ingested "${filename}" — ${data.chunks_created} chunks created`, 'success');
+                    document.getElementById('docText').value = '';
+                    refreshDocuments();
+                } else {
+                    showToast(`Error: ${data.error}`, 'error');
+                }
+            } catch (e) {
+                showToast('Failed to connect to API', 'error');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Ingest';
+        }
+
+        // ─── ASK QUESTION ───────────────────────────────
+        async function askQuestion() {
+            const input = document.getElementById('chatInput');
+            const question = input.value.trim();
+            if (!question) return;
+
+            // Hide welcome screen
+            const welcome = document.getElementById('welcomeScreen');
+            if (welcome) welcome.remove();
+
+            // Add user message
+            addMessage(question, 'user');
+            input.value = '';
+
+            // Show typing indicator
+            const typing = showTyping();
+
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+                const data = await res.json();
+
+                typing.remove();
+
+                if (res.ok) {
+                    addMessage(data.answer, 'assistant', data.sources);
+                } else {
+                    addMessage(`Error: ${data.error}`, 'assistant');
+                }
+            } catch {
+                typing.remove();
+                addMessage('Failed to connect to the API. Is the server running?', 'assistant');
+            }
+
+            sendBtn.disabled = false;
+            input.focus();
+        }
+
+        // ─── ADD MESSAGE TO CHAT ────────────────────────
+        function addMessage(text, role, sources = []) {
+            const messages = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+
+            let sourcesHtml = '';
+            if (sources.length > 0) {
+                sourcesHtml = '<div style="margin-top: 8px;">' +
+                    sources.map(s => `<span class="sources-tag">📄 ${s}</span>`).join('') +
+                    '</div>';
+            }
+
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            div.innerHTML = `
+                <div class="message-bubble">${text.replace(/\n/g, '<br>')}${sourcesHtml}</div>
+                <div class="message-meta">${time}</div>
+            `;
+
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        // ─── TYPING INDICATOR ───────────────────────────
+        function showTyping() {
+            const messages = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = 'typing';
+            div.innerHTML = '<span></span><span></span><span></span>';
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+            return div;
+        }
+
+        // ─── REFRESH DOCUMENTS LIST ─────────────────────
+        async function refreshDocuments() {
+            try {
+                const res = await fetch(`${API_BASE}/documents`);
+                const data = await res.json();
+                const list = document.getElementById('documentList');
+
+                if (data.documents && data.documents.length > 0) {
+                    list.innerHTML = data.documents.map(doc =>
+                        `<div class="doc-item">
+                            <span class="icon">📄</span>
+                            <span class="name">${doc}</span>
+                        </div>`
+                    ).join('') +
+                    `<div style="font-size: 11px; color: var(--text-muted); padding: 8px 12px;">
+                        ${data.total_chunks} chunks total
+                    </div>`;
+                } else {
+                    list.innerHTML = '<p style="font-size: 13px; color: var(--text-muted); padding: 8px;">No documents yet. Upload one above!</p>';
+                }
+            } catch { /* API might not be ready yet */ }
+        }
+
+        // ─── CLEAR DOCUMENTS ────────────────────────────
+        async function clearDocuments() {
+            if (!confirm('Clear all documents from the knowledge base?')) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/documents/clear`, { method: 'DELETE' });
+                const data = await res.json();
+                showToast(`🗑️ Cleared ${data.chunks_removed} chunks`, 'success');
+                refreshDocuments();
+            } catch {
+                showToast('Failed to clear documents', 'error');
+            }
+        }
+
+        // ─── TOAST NOTIFICATION ─────────────────────────
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ─── INIT ───────────────────────────────────────
+        checkStatus();
+    </script>
+</body>
+</html>

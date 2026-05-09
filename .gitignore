@@ -1,0 +1,37 @@
+# ============================================================
+# Git Ignore — Files that should NEVER be committed
+# ============================================================
+
+# --- Secrets (CRITICAL — never commit API keys!) ---
+.env
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# --- Virtual Environment ---
+venv/
+.venv/
+env/
+
+# --- ChromaDB data (generated at runtime) ---
+chroma_db/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Testing ---
+.coverage
+htmlcov/
+.pytest_cache/

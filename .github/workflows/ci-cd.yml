@@ -1,0 +1,155 @@
+# ============================================================
+# DocuMind CI/CD Pipeline — GitHub Actions
+# ============================================================
+#
+# WHAT IS THIS FILE?
+# This YAML file defines your CI/CD pipeline. GitHub reads it
+# and automatically runs these steps when you push code.
+#
+# WHERE DOES IT RUN?
+# GitHub spins up a fresh Ubuntu VM (called a "runner") and
+# executes each step inside it. It's like having a robot
+# developer who tests and builds your code on every push.
+#
+# WHAT IS CI/CD?
+# CI (Continuous Integration) = Automatically TEST every push
+# CD (Continuous Deployment)  = Automatically DEPLOY if tests pass
+#
+# THE PIPELINE:
+#   push code → TEST → BUILD → DEPLOY
+#                 ↓       ↓       ↓
+#              pytest   Docker  notification
+#              lint     image   (or real deploy)
+# ============================================================
+
+name: 🚀 DocuMind CI/CD Pipeline
+
+# ─── TRIGGERS ────────────────────────────────────────────
+# WHEN should this pipeline run?
+on:
+  push:
+    branches: [main]         # Every push to main branch
+  pull_request:
+    branches: [main]         # Every PR targeting main branch
+
+# ─── JOBS ────────────────────────────────────────────────
+# Jobs run on separate VMs. They can run in parallel or
+# sequentially (using 'needs' to create dependencies).
+
+jobs:
+  # ════════════════════════════════════════════════════════
+  # JOB 1: TEST (Continuous Integration)
+  # ════════════════════════════════════════════════════════
+  # This job runs your tests. If ANY test fails, the entire
+  # pipeline STOPS — broken code never gets built or deployed.
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest     # Use GitHub's Ubuntu VM
+
+    steps:
+      # Step 1: Download your code onto the VM
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Install Python on the VM
+      - name: 🐍 Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"           # Cache pip packages between runs (faster!)
+
+      # Step 3: Install your project's dependencies
+      - name: 📦 Install dependencies
+        run: pip install -r requirements.txt
+
+      # Step 4: Check code quality (syntax errors, etc.)
+      - name: 🔍 Lint — check for syntax errors
+        run: |
+          python -m py_compile app/main.py
+          python -m py_compile app/rag_engine.py
+          python -m py_compile app/config.py
+          echo "✅ All files compile successfully!"
+
+      # Step 5: Run all tests with coverage report
+      - name: 🧪 Run tests with coverage
+        run: |
+          pytest --cov=app --cov-report=term-missing -v
+          echo "✅ All tests passed!"
+
+  # ════════════════════════════════════════════════════════
+  # JOB 2: BUILD Docker Image
+  # ════════════════════════════════════════════════════════
+  # This job builds the Docker image. It ONLY runs if tests pass
+  # (because of 'needs: test'). This is CI/CD gating in action!
+  build:
+    name: 🐳 Build Docker Image
+    needs: test                 # ⬅️ DEPENDENCY: Only run if 'test' passes!
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      # Docker Buildx = next-gen Docker build with caching support
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build the image (this runs your Dockerfile)
+      - name: 🏗️ Build Docker image
+        run: docker build -t documind:latest .
+
+      # Run the container and verify it starts correctly
+      - name: 🏥 Smoke test — verify container health
+        run: |
+          # Start the container in the background (-d = detached)
+          docker run -d --name test-container -p 5000:5000 \
+            -e GOOGLE_API_KEY=test-key-for-ci \
+            documind:latest
+
+          # Wait for the app to start
+          echo "⏳ Waiting for container to start..."
+          sleep 15
+
+          # Hit the health check endpoint
+          echo "🔍 Checking health endpoint..."
+          curl --fail http://localhost:5000/ || exit 1
+
+          echo "✅ Container is healthy!"
+
+          # Clean up
+          docker stop test-container
+          docker rm test-container
+
+  # ════════════════════════════════════════════════════════
+  # JOB 3: DEPLOY (Continuous Deployment)
+  # ════════════════════════════════════════════════════════
+  # This job handles deployment. It ONLY runs if:
+  # 1. Build succeeded (needs: build)
+  # 2. We're on the main branch (not a PR)
+  #
+  # In a real project, this would deploy to AWS/GCP/Azure.
+  # For learning, we just print a success message.
+  deploy:
+    name: 🚀 Deploy
+    needs: build               # ⬅️ DEPENDENCY: Only run if 'build' passes!
+    if: github.ref == 'refs/heads/main'  # Only deploy from main, not PRs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📢 Deployment notification
+        run: |
+          echo "════════════════════════════════════════════"
+          echo "  🎉 DEPLOYMENT PIPELINE COMPLETE!"
+          echo "════════════════════════════════════════════"
+          echo ""
+          echo "  ✅ Tests:  All passed"
+          echo "  ✅ Build:  Docker image built"
+          echo "  ✅ Health: Container verified"
+          echo "  📦 Image:  documind:latest"
+          echo ""
+          echo "  In production, this step would:"
+          echo "  • Push image to Docker Hub / GHCR"
+          echo "  • Deploy to AWS ECS / GCP Cloud Run"
+          echo "  • Update Kubernetes deployment"
+          echo ""
+          echo "════════════════════════════════════════════"

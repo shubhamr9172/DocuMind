@@ -1,0 +1,49 @@
+# ============================================================
+# Docker Compose — Multi-service orchestration
+# ============================================================
+#
+# WHAT IS DOCKER COMPOSE?
+# While a Dockerfile builds ONE image, docker-compose orchestrates
+# MULTIPLE services together. Even with one service, it simplifies:
+# - Port mapping, volumes, env vars in ONE file
+# - One command to start everything: docker compose up
+#
+# RUN: docker compose up --build
+# STOP: docker compose down
+# ============================================================
+
+services:
+  # ─── DocuMind API Service ──────────────────────────────
+  documind:
+    # Build the Docker image from our Dockerfile
+    build: .
+
+    # Map port 5000 on your machine → port 5000 in the container
+    # Format: HOST:CONTAINER
+    ports:
+      - "5000:5000"
+
+    # Mount local directories into the container
+    # This means changes on your machine appear inside the container!
+    volumes:
+      - ./data:/app/data                  # Sample documents
+      - chroma_data:/app/chroma_db        # Persist vector database
+
+    # Load environment variables from .env file
+    env_file:
+      - .env
+
+    # Extra environment variables
+    environment:
+      - FLASK_ENV=development
+
+    # Restart policy — if the container crashes, restart it
+    # (except if you manually stop it with docker compose down)
+    restart: unless-stopped
+
+# ─── Named Volumes ──────────────────────────────────────
+# Named volumes persist data even when containers are destroyed.
+# Without this, your ChromaDB data would be lost on every restart!
+volumes:
+  chroma_data:
+    driver: local

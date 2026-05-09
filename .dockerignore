@@ -1,0 +1,19 @@
+# Files to exclude from Docker image (keeps it small & secure)
+.git
+.github
+.gitignore
+.env
+.env.example
+__pycache__
+*.pyc
+*.pyo
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+chroma_db/
+*.md
+.vscode/
+.idea/
+venv/
+.venv/
