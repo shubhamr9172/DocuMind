@@ -53,3 +53,13 @@ class Config:
                 "Get a free key at https://aistudio.google.com/ "
                 "and add it to your .env file."
             )
+
+    @classmethod
+    def load_from_dict(cls, settings: dict):
+        """
+        Override configuration from a dictionary.
+        Useful for testing or dynamic reconfiguration.
+        """
+        for key, value in settings.items():
+            if hasattr(cls, key):
+                setattr(cls, key, value)
