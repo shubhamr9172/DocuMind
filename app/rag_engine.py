@@ -184,19 +184,26 @@ ANSWER:"""
         )
 
         # Step 4: Send context + question to LLM
-        chain = self.prompt | self.llm | StrOutputParser()
-        answer = chain.invoke({"context": context, "question": question})
+        try:
+            chain = self.prompt | self.llm | StrOutputParser()
+            answer = chain.invoke({"context": context, "question": question})
 
-        # Collect unique source document names
-        sources = list(
-            set(doc.metadata.get("source", "unknown") for doc in retrieved_docs)
-        )
+            # Collect unique source document names
+            sources = list(
+                set(doc.metadata.get("source", "unknown") for doc in retrieved_docs)
+            )
 
-        return {
-            "answer": answer,
-            "sources": sources,
-            "chunks_used": len(retrieved_docs),
-        }
+            return {
+                "answer": answer,
+                "sources": sources,
+                "chunks_used": len(retrieved_docs),
+            }
+        except Exception as e:
+            return {
+                "answer": f"Error generating answer: {str(e)}",
+                "sources": [],
+                "chunks_used": len(retrieved_docs),
+            }
 
     def list_documents(self):
         """List all documents currently stored in the vector database."""

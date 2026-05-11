@@ -138,6 +138,19 @@ def create_app(testing=False):
     def serve_frontend():
         return send_from_directory(app.static_folder, "index.html")
 
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        """Global error handler for unhandled exceptions."""
+        # If the error has a status code (like Flask's HTTPException), use it
+        code = 500
+        if hasattr(e, "code"):
+            code = e.code
+
+        return jsonify({
+            "error": "Internal Server Error" if code == 500 else "Error",
+            "message": str(e)
+        }), code
+
     return app
 
 
